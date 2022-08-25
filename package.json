@@ -16,5 +16,8 @@
     "svelte": "^3.47.0",
     "svelte-spa-router": "^3.2.0",
     "unzipit": "^1.4.0"
+  },
+  "dependencies": {
+    "@azure/identity": "^2.1.0"
   }
 }
