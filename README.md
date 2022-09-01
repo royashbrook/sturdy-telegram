@@ -6,21 +6,18 @@
 - [Snowpack](https://snowpack.dev/)
 - [Simple.css](https://simplecss.org/)
 - [svelte-spa-router](https://github.com/ItalyPaleAle/svelte-spa-router)
-- [Microsoft MSAL.js](https://docs.microsoft.com/en-us/azure/active-directory/develop/msal-overview)
-- [Microsoft Graph API](https://docs.microsoft.com/en-us/azure/active-directory/develop/microsoft-graph-intro)
-- [Office 365](https://www.office.com/)
-- [CosmosDB (SQLAPI)](https://docs.microsoft.com/en-us/azure/cosmos-db/sql/create-sql-api-nodejs)
+- [@azure/identity](https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/identity/identity)
+- [@azure/cosmos](https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/cosmosdb/cosmos)
+- [@azure/storage-blob](https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/storage/storage-blob)
 
 This project is based on [laughing-barnacle](https://github.com/royashbrook/laughing-barnacle).
 
 It provides an example of:
+
 - A SPA application that
-- Auto authenticates using MSAL.js upon startup
-- Automatically gets a token for Microsoft Graph API upon successful authenication
-- Pulls credentials to use for CosmosDB and Azure Blob Storage
-
-Note: Currently, this project uses some custom caching as the assumption is the files will be updated in a central location, and there may be multiple files that need to be merged from a standardized json format. This caching could be removed and instead of polling a folder for all files, then caching them, you could just pull a single file.
-
+- Authenticates to azure using @azure/identity
+- Searches CosmosDB indexes using @azure/cosmos
+- Downloads files from @azure/storage-blob
 
 # Install
 
@@ -30,60 +27,50 @@ Installation is pretty simple once you have things setup. See [laughing-barnacle
 
 - Clone this repository however you prefer
 - `npm install`
-- configure `auth.config.js` 
-  - clientId: "your app registration client id",
-  - authority: "https://login.microsoftonline.com/your tenant id",
-- and `graph.config.js`
-  - const drive = 'drive id for your sharepoint site'
-  - const item = 'item id for your sharepoint site'
-- and secret.json
-  - must be properly configured and stored on o365 to match graph config
+- configure `config.js` with your ids
 - `npm run start` and you are good to go!
 
-## Getting details for auth.config.js
+## config.js
 
-See [laughing-barnacle](https://github.com/royashbrook/laughing-barnacle)
+See [laughing-barnacle](https://github.com/royashbrook/laughing-barnacle) for more details before continuing on cosmosdb and azure storage setup.
 
-## Getting details for graph.config.js
-
-See [laughing-barnacle](https://github.com/royashbrook/laughing-barnacle)
-
-## secrets.json?
-
-Secrets.json is the file that will hold the keys for accessing Cosmos and Azure Storage. This file will be stored on O365, that you will access via MS Graph. This file needs to be in the format below and zipped up unless changes are made to remove the caching setup. See [laughing-barnacle](https://github.com/royashbrook/laughing-barnacle) for more details on that.
-
-```json
-{
-  "cosmosConnection": "",
-  "cosmosDatabase": "",
-  "cosmosContainer": "",
-  "cosmosQuery": "",
-  "storageURI": "",
-  "storageSAS": ""
+```js
+const tenantId = 'your tenant id'
+const clientId = 'your client id'
+export const cosmos = {
+  endpoint: 'https://xxxxxx.documents.azure.com',
+  databaseId: 'your cosmos db',
+  containerId: 'your cosmos container',
+  tenantId: tenantId,
+  clientId: clientId,
+}
+export const blob = {
+  endpoint: 'https://xxxxxx.blob.core.windows.net',
+  containerId: 'your blob container',
+  tenantId: tenantId,
+  clientId: clientId,
 }
 ```
 
-cosmosConnection must be a connection string with the AccountEndpoint and AccountKey values in it. This can be modified to test, but I thought this would give a good example of pulling these values out of a connection string as well, so I left it in. The rest of the values are self explanatory. We are using SAS key for storage.
+## additional config
 
-Note that CORS must be setup properly on both Cosmos and Azure Storage for this to work as-is.
+You will also need to provision access to the user in question. For blob storage, you can simply use the azure portal to give access to the user on the container in question. They will need `Storage Blob Data Reader` role to read the files out. For Cosmos, it's a bit more complicated as there is currently no way to provide this access int he azure portal, so you have to use powershell. Below is a powershell script for this:
 
-Cosmos CORS:
+```powershell
+#az cosmosdb sql role assignment list --account-name frtl --resource-group rg-cosmos-01
+$resourceGroupName='resource group for your cosmos db'
+$accountName='cosmos db name'
+$principalId = 'prinicpal id for your app or user. you can get these from the azure record for user or app'
+$readOnlyRoleDefinitionId = '00000000-0000-0000-0000-000000000001'
+az cosmosdb sql role assignment create `
+--account-name $accountName `
+--resource-group $resourceGroupName `
+--scope "/" `
+--principal-id $principalId `
+--role-definition-id $readOnlyRoleDefinitionId
+```
 
-![image](https://user-images.githubusercontent.com/7390156/168329457-b0f3ce2f-bc10-4542-858d-f3c1a80f9296.png)
-
-Azure Blob Storage CORS:
-
-![image](https://user-images.githubusercontent.com/7390156/168329371-1fe93359-fb09-40dd-8894-52e698ab35ee.png)
-
-Sample data used to seed both is in the sample_data folder. Cosmos.json was simply uploaded to Cosmos once the DB and collection were setup.
-
-Cosmos with sample data loaded:
-
-![image](https://user-images.githubusercontent.com/7390156/168330661-c53a096d-5e9e-437a-8c33-385f6fcf458d.png)
-
-Azure Blob Storage with sample data loaded:
-
-![image](https://user-images.githubusercontent.com/7390156/168330963-ce28310a-f6bf-4af7-b2a8-fbc420352a37.png)
+More details on this [here](https://docs.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac)
 
 # See it
 
@@ -108,7 +95,6 @@ Changing criteria and hitting enter return fresh results. As this is just a samp
 ![image](https://user-images.githubusercontent.com/7390156/168331695-fc76c488-ebf9-49ed-a01c-b8a954ec2a3d.png)
 
 The download buttons are anchor wrapped buttons that use the SAS token to generate a direct link with a `target="blank"` so they will behave like any other link.
-
 
 # Note
 

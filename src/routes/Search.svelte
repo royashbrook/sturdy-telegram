@@ -1,7 +1,6 @@
 <script>
   import { getSearchResults, searchResults } from '../stores/search/search'
   import matchTypes from '../stores/preferences/matchTypes'
-  import { data } from '../stores/graph/data'
   import { preferences } from '../stores/preferences/preferences'
   import SearchResults from '../components/SearchResults.svelte'
   import Spinner from '../components/Spinner.svelte'
